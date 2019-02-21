@@ -1,0 +1,102 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "virtualMachineName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Virtual Machine to add the extension to."
+      }
+    },
+    "existingdiagnosticsStorageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of an existing storage account to which diagnostics data is transfered."
+      }
+    },
+    "existingdiagnosticsStorageResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "The resource group for the storage account specified in existingdiagnosticsStorageAccountName"
+      }
+    }
+  },
+  "variables": {
+    "accountid": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/',parameters('existingdiagnosticsStorageResourceGroup'), '/providers/','Microsoft.Storage/storageAccounts/', parameters('existingdiagnosticsStorageAccountName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('virtualMachineName'), '/VMDiagnosticsExt')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publisher": "Microsoft.Azure.Diagnostics",
+        "type": "IaaSDiagnostics",
+        "typeHandlerVersion": "1.12",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "xmlCfg": "",
+          "WadCfg": {
+            "DiagnosticMonitorConfiguration": {
+              "overallQuotaInMB": 4096,
+              "DiagnosticInfrastructureLogs": {
+                "scheduledTransferLogLevelFilter": "Error"
+              },
+              "PerformanceCounters": {
+                "scheduledTransferPeriod": "PT1M",
+                "sinks": "AzMonSink",
+                "PerformanceCounterConfiguration": [
+                  {
+                    "counterSpecifier": "\\Memory\\Available Bytes",
+                    "sampleRate": "PT15S"
+                  },
+                  {
+                    "counterSpecifier": "\\Memory\\% Committed Bytes In Use",
+                    "sampleRate": "PT15S"
+                  },
+                  {
+                    "counterSpecifier": "\\LogicalDisk(_Total)\\% Free Space",
+                    "sampleRate": "PT15S"
+                  },
+                  {
+                    "counterSpecifier": "\\Processor(_Total)\\% Processor Time",
+                    "sampleRate": "PT15S"
+                  }
+                ]
+              },
+              "WindowsEventLog": {
+                "scheduledTransferPeriod": "PT1M",
+                "DataSource": [
+                  {
+                    "name": "Application!*"
+                  }
+                ]
+              },
+              "Logs": {
+                "scheduledTransferPeriod": "PT1M",
+                "scheduledTransferLogLevelFilter": "Error"
+              }
+            },
+            "SinksConfig": {
+              "Sink": [
+                {
+                  "name": "AzMonSink",
+                  "AzureMonitor": {}
+                }
+              ]
+            }
+          },
+          "StorageAccount": "[parameters('existingdiagnosticsStorageAccountName')]"
+        },
+        "protectedSettings": {
+          "storageAccountName": "[parameters('existingdiagnosticsStorageAccountName')]",
+          "storageAccountKey": "[listkeys(variables('accountid'), '2015-05-01-preview').key1]",
+          "storageAccountEndPoint": "https://core.windows.net/"
+        }
+      }
+    }
+  ],
+  "outputs": {
+  }
+}

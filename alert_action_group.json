@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "virtualMachineName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Virtual Machine to create the alert action group for."
+      }
+    },
+    "sendToEmails": {
+      "type": "string",
+      "metadata": {
+        "description": "Comma-separated list of emails to send alerts to."
+      }
+    }
+  },
+  "variables": {
+    "actionGroupName": "[concat('memory_80_action_',parameters('virtualMachineName'))]",
+    "actionGroupShortName": "[concat('mem_',parameters('virtualMachineName'))]",
+    "customEmails": "[split(parameters('sendToEmails'), ',')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/actionGroups",
+      "apiVersion": "2018-03-01",
+      "name": "[variables('actionGroupName')]",
+      "location": "Global",
+      "properties": {
+        "groupShortName": "[variables('actionGroupShortName')]",
+        "enabled": true,
+        "copy": [
+          {
+            "name": "emailReceivers",
+            "count": "[length(variables('customEmails'))]",
+            "input": {
+              "name": "[concat('Email_', copyIndex('emailReceivers'))]",
+              "emailAddress": "[variables('customEmails')[copyIndex('emailReceivers')]]"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+    "actionGroupId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/actionGroups',variables('actionGroupName'))]"
+    }
+  }
+}

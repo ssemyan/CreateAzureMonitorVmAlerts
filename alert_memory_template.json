@@ -1,0 +1,68 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "virtualMachineName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Virtual Machine to create the alert for."
+      }
+    },
+    "actionGroupId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the action group to assign to this alert."
+      }
+    }
+  },
+  "variables": {
+    "alertName": "[concat('memory_80_',parameters('virtualMachineName'))]",
+    "alertDescription": "Email when memory greater than 80 percent for 5 min",
+    "resourceId": "[resourceId('Microsoft.Compute/virtualMachines', parameters('virtualMachineName'))]",
+    "alertSeverity": 2,
+    "isEnabled": true,
+    "metricName": "Memory\\% Committed Bytes In Use",
+    "metricNamespace": "Azure.VM.Windows.GuestMetrics",
+    "operator": "GreaterThan",
+    "threshold": 80,
+    "timeAggregation": "Average",
+    "windowSize": "PT5M",
+    "evaluationFrequency": "PT1M"
+  },
+  "resources": [
+    {
+      "name": "[variables('alertName')]",
+      "type": "Microsoft.Insights/metricAlerts",
+      "location": "global",
+      "apiVersion": "2018-03-01",
+      "tags": {},
+      "properties": {
+        "description": "[variables('alertDescription')]",
+        "severity": "[variables('alertSeverity')]",
+        "enabled": "[variables('isEnabled')]",
+        "scopes": [ "[variables('resourceId')]" ],
+        "evaluationFrequency": "[variables('evaluationFrequency')]",
+        "windowSize": "[variables('windowSize')]",
+        "criteria": {
+          "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+          "allOf": [
+            {
+              "name": "1st criterion",
+              "metricName": "[variables('metricName')]",
+              "metricNamespace": "[variables('metricNamespace')]",
+              "dimensions": [],
+              "operator": "[variables('operator')]",
+              "threshold": "[variables('threshold')]",
+              "timeAggregation": "[variables('timeAggregation')]"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "actionGroupId": "[parameters('actionGroupId')]"
+          }
+        ]
+      }
+    }
+  ]
+}
